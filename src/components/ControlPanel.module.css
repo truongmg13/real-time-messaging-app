@@ -1,0 +1,21 @@
+.panel {
+    background: #13151f;
+    border-right: 1px solid #2d3148;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.section {
+    padding: 16px;
+    border-bottom: 1px solid #1e2133;
+}
+
+.sectionTitle {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748b;
+    margin-bottom: 10px;
+}
