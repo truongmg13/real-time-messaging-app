@@ -1,0 +1,18 @@
+.bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.bar textarea {
+  flex: 1;
+  resize: none;
+  max-height: 120px;
+}
+
+.send {
+  flex-shrink: 0;
+}

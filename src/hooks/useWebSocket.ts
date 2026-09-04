@@ -1,121 +1,84 @@
 import { useRef, useState, useCallback } from 'react'
 
-import type { LogEntry, LogType, ConnectionStatus, OutboundEnvelop, InboundEnvelope } from '../types'
+import type { ConnectionStatus, OutboundEnvelop, InboundEnvelope, AuthOkMessge, IncomingMessage, ErrorMessage } from '../types'
+
+export interface UseWebSocketOptions {
+    onAuthOk?: (msg: AuthOkMessge) => void
+    onMessage?: (msg: IncomingMessage) => void
+    onError?: (msg: ErrorMessage) => void
+    onClose?: (event: CloseEvent) => void
+}
 
 export interface UseWebSocketReturn {
     status: ConnectionStatus
-    userId: string | null
-    isConnected: boolean
-    log: LogEntry[]
     connect: (url: string) => void
     disconnect: () => void
     sendAuth: (token: string) => void
-    sendMsg: (recipientId: string, content: string) => void
-    addLog: (type: LogType, message: string) => void
+    sendMsg: (recipientId: string, content: string) => boolean
 }
 
-export function useWebSocket():UseWebSocketReturn {
+export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
     const wsRef = useRef<WebSocket | null>(null)
+    const optionsRef = useRef(options)
+    optionsRef.current = options
 
     const [status, setStatus] = useState<ConnectionStatus>('disconnected')
-    const [userId, setUserId] = useState<string | null>(null)
-    const [log, setLog] = useState<LogEntry[]>([])
 
-    const addLog = useCallback((type: LogType, message: string) => {
-        const now = new Date()
-        const ts = now.toTimeString().slice(0, 8) + '.' + String(now.getMilliseconds()).padStart(3, '0')
-        setLog((prev) => [
-            ...prev,
-            { id: Date.now() + Math.random(), type, message, ts },
-        ])
-    }, [])
+    const connect = useCallback((url: string) => {
+        wsRef.current?.close()
 
-    /* --- Connect --------------- */
-    const connect = useCallback(
-        (url: string) => {
-            wsRef.current?.close();
-            addLog('system', `Connecting to ${url} ...`)
+        const ws = new WebSocket(url)
+        wsRef.current = ws
 
-            const ws = new WebSocket(url);
-            wsRef.current = ws
-            
-            ws.onopen = () => {
-                setStatus('connected')
-                addLog('info', 'Handshake complete. You have 30s to send AUTH.')
-            }
+        ws.onopen = () => {
+            if (wsRef.current !== ws) return // stale socket from a superseded connect() call
+            setStatus('connected')
+        }
 
-            ws.onmessage = (e: MessageEvent<string>) => {
-                try {
-                    const msg = JSON.parse(e.data) as InboundEnvelope
-                    addLog('recv', JSON.stringify(msg, null, 2))
-
-                    if (msg.type === 'AUTH_OK') {
-                        setStatus('authenticated')
-                        setUserId(msg.userId)
-                        addLog('info', `Authenticated as userId: ${msg.userId}`)
-                    }
-                    if (msg.type === 'ERROR') {
-                        addLog('error', `[${msg.code} ${msg.reason}]`)    
-                    }
-                } catch (err) {
-                    addLog('error', e.data)
+        ws.onmessage = (e: MessageEvent<string>) => {
+            if (wsRef.current !== ws) return
+            try {
+                const msg = JSON.parse(e.data) as InboundEnvelope
+                if (msg.type === 'AUTH_OK') {
+                    setStatus('authenticated')
+                    optionsRef.current.onAuthOk?.(msg)
+                } else if (msg.type === 'MESSAGE') {
+                    optionsRef.current.onMessage?.(msg)
+                } else if (msg.type === 'ERROR') {
+                    optionsRef.current.onError?.(msg)
                 }
+            } catch {
+                // ignore malformed frames
             }
+        }
 
-            ws.onerror = () => {
-                addLog('error', 'WebSocket error - is server running on port 8081')
-            }
-            
-            ws.onclose = (e: CloseEvent) => {
-                setStatus('closed')
-                setUserId(null)
-                addLog('system', `Closed - code ${e.code}${e.reason ? ' -- ' + e.reason : ''}`)   
-                wsRef.current = null
-            }
-
-        }, [addLog]
-    )
+        ws.onclose = (e: CloseEvent) => {
+            if (wsRef.current !== ws) return // an already-superseded socket closing; don't clobber the live one
+            setStatus('closed')
+            wsRef.current = null
+            optionsRef.current.onClose?.(e)
+        }
+    }, [])
 
     const disconnect = useCallback(() => {
-        wsRef.current?.close(1000, 'Client closed');
+        wsRef.current?.close(1000, 'Client closed')
     }, [])
 
-    const send = useCallback(
-        (obj: OutboundEnvelop): boolean => {
-            const ws = wsRef.current
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                addLog('error', 'Not connected')
-                return false
-            }
-            ws.send(JSON.stringify(obj))
-            addLog('sent', JSON.stringify(obj, null, 2));
-            return true
-        },
-        [addLog]
-    )
+    const send = useCallback((obj: OutboundEnvelop): boolean => {
+        const ws = wsRef.current
+        if (!ws || ws.readyState !== WebSocket.OPEN) return false
+        ws.send(JSON.stringify(obj))
+        return true
+    }, [])
 
-    const sendAuth = useCallback(
-        (token: string) => send({ type: 'AUTH', token }),
-        [send]
-    )
+    const sendAuth = useCallback((token: string) => {
+        send({ type: 'AUTH', token })
+    }, [send])
 
     const sendMsg = useCallback(
-        (recipientId: string, content: string) =>
-            send({ type: 'SEND', recipientId, content }),
+        (recipientId: string, content: string) => send({ type: 'SEND', recipientId, content }),
         [send]
     )
-    
-    const isConnected = status === 'connected' || status === 'authenticated'
 
-    return {
-        status,
-        userId,
-        isConnected,
-        log,
-        connect,
-        disconnect,
-        sendAuth,
-        sendMsg,
-        addLog
-    }
+    return { status, connect, disconnect, sendAuth, sendMsg }
 }

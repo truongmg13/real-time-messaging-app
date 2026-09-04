@@ -1,35 +1,36 @@
-// import { useRef, useState } from 'react'
-import { useWebSocket } from './hooks/useWebSocket'
+import type { ReactNode } from 'react'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { useAuth } from './context/AuthContext'
+import { ChatProvider } from './context/ChatContext'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import ChatPage from './pages/ChatPage'
 import './App.css'
-import Header from './components/Header'
-import ControlPanel from './components/ControlPanel'
-import LogPanel from './components/LogPanel'
 
-export default function App() {
-  const {
-    status, userId, isConnected, log,
-    connect, disconnect, sendAuth, sendMsg, addLog
-  } = useWebSocket()
-
-  return (
-    <div className="app-layout">
-      <Header status={status} userId={userId} />
-      
-      <div className="app-body">
-        <ControlPanel
-          isConnected={isConnected}
-          onConnect={connect}
-          onDisconnect={disconnect}
-          onSendAuth={sendAuth}
-          onSendMsg={sendMsg}
-          addLog={addLog}
-         />
-
-        <LogPanel log={log} />
-      </div>
-
-    </div>
-  )
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
+  if (!user) return <Navigate to="/login" replace />
+  return children
 }
 
+export default function App() {
+  const { user } = useAuth()
 
+  return (
+    <Routes>
+      <Route path="/login" element={user ? <Navigate to="/chat" replace /> : <LoginPage />} />
+      <Route path="/register" element={user ? <Navigate to="/chat" replace /> : <RegisterPage />} />
+      <Route
+        path="/chat"
+        element={
+          <RequireAuth>
+            <ChatProvider>
+              <ChatPage />
+            </ChatProvider>
+          </RequireAuth>
+        }
+      />
+      <Route path="*" element={<Navigate to={user ? '/chat' : '/login'} replace />} />
+    </Routes>
+  )
+}
