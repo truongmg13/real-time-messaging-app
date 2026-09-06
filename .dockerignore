@@ -1,0 +1,13 @@
+node_modules
+dist
+dist-ssr
+npm-debug.log*
+.git
+.gitignore
+.DS_Store
+*.local
+.vscode
+.idea
+README.md
+CLAUDE.md
+ws-chat.html
