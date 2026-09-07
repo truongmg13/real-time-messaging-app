@@ -1,12 +1,3 @@
-.app-layout {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  height: 100wh;
-  overflow: hidden;
-}
-
-.app-body {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  overflow: hidden;
+#root {
+  height: 100%;
 }

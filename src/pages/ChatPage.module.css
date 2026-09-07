@@ -1,0 +1,54 @@
+.page {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  overflow: hidden;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: #2d2d2d;
+  color: var(--subtle);
+}
+
+.badgeAuthenticated {
+  background: #14532d;
+  color: var(--green);
+}
+
+.badgeClosed {
+  background: #3b1919;
+  color: var(--red);
+}
+
+.body {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  overflow: hidden;
+}
